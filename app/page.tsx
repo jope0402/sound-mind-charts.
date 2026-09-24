@@ -97,7 +97,7 @@ export default function Home(){
       try{
         const [current,currentArtists] = await Promise.all([
           getChart(category,period,28),
-          getArtists(category,period,15)
+          getArtists(category,period,20)
         ]);
         if(!active) return;
         setRows(current);
@@ -217,8 +217,8 @@ export default function Home(){
             </div>
 
             <div className="panel">
-              <h3>Top Artists</h3>
-              <p className="artist-caption">{category==="global" ? "Across all monitored tracks" : "Within the selected category"} · {period==="daily" ? "Daily" : period==="7d" ? "7 Days" : "30 Days"}</p>
+              <h3>Tracked Artist Leaders</h3>
+              <p className="artist-caption">{category==="global" ? "Partial catalog across the monitored universe" : "Partial catalog within the selected category"} · {period==="daily" ? "Daily" : period==="7d" ? "7 Days" : "30 Days"}</p>
               {artists.map((a)=>(
                 <div className="artist-row" key={a.artist_name}>
                   <b>{a.rank}</b>
@@ -229,7 +229,7 @@ export default function Home(){
                     ) : (
                       <strong>{a.artist_name}</strong>
                     )}
-                    <span>{fmt(a.metric_value)} streams · {a.monitored_tracks} monitored tracks</span>
+                    <span>{fmt(a.metric_value)} streams from {a.monitored_tracks} monitored tracks · provisional</span>
                   </div>
                 </div>
               ))}
@@ -237,7 +237,7 @@ export default function Home(){
 
             <div className="panel">
               <h3>Method</h3>
-              <p className="method">Search broadly → measure candidates → quality-check obvious mismatches/anomalies → rank strictly by Spotify streams. No category quotas decide Global Top.</p>
+              <p className="method">Track charts rank the measured universe strictly by Spotify streams. Artist leaders are provisional because some artists have hundreds of releases while only part of each catalog is currently measured. We do not treat this as a full-catalog artist ranking yet.</p>
             </div>
           </aside>
         </div>
