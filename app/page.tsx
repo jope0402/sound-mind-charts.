@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const SUPABASE_URL = "https://lqgetuphktyczzjcdgep.supabase.co";
 const SUPABASE_KEY = "sb_publishable_kTloHtBbreb2TC12XVMMkw_B_wyeyIa";
@@ -35,6 +35,15 @@ type Row = {
   latest_at:string;
 };
 
+type ArtistRow = {
+  rank:number;
+  artist_name:string;
+  spotify_artist_id:string | null;
+  artwork_url:string | null;
+  metric_value:number;
+  monitored_tracks:number;
+};
+
 async function getChart(category:string, period:string, limit=28):Promise<Row[]> {
   const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/get_pilot_chart", {
     method:"POST",
@@ -53,13 +62,31 @@ async function getChart(category:string, period:string, limit=28):Promise<Row[]>
   return res.json();
 }
 
+async function getArtists(category:string, period:string, limit=15):Promise<ArtistRow[]> {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/get_pilot_artists", {
+    method:"POST",
+    headers:{
+      apikey:SUPABASE_KEY,
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+      p_category:category,
+      p_period:period,
+      p_limit:limit
+    }),
+    cache:"no-store"
+  });
+  if (!res.ok) throw new Error("Unable to load artists");
+  return res.json();
+}
+
 function fmt(n:number){ return new Intl.NumberFormat("en-US").format(Number(n||0)); }
 
 export default function Home(){
   const [category,setCategory] = useState("global");
   const [period,setPeriod] = useState("daily");
   const [rows,setRows] = useState<Row[]>([]);
-  const [globalRows,setGlobalRows] = useState<Row[]>([]);
+  const [artists,setArtists] = useState<ArtistRow[]>([]);
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
 
@@ -68,10 +95,13 @@ export default function Home(){
     async function run(){
       setLoading(true); setError("");
       try{
-        const current = await getChart(category,period,28);
-        const global = category==="global" ? current : await getChart("global",period,28);
+        const [current,currentArtists] = await Promise.all([
+          getChart(category,period,28),
+          getArtists(category,period,15)
+        ]);
         if(!active) return;
-        setRows(current); setGlobalRows(global);
+        setRows(current);
+        setArtists(currentArtists);
       }catch(e){
         if(!active) return;
         setError(e instanceof Error ? e.message : "Unable to load chart");
@@ -82,17 +112,6 @@ export default function Home(){
     run();
     return ()=>{active=false};
   },[category,period]);
-
-  const artists = useMemo(()=>{
-    const map = new Map<string,{name:string,total:number,img:string|null}>();
-    for(const r of globalRows){
-      const x = map.get(r.artist_name) || {name:r.artist_name,total:0,img:r.artwork_url};
-      x.total += Number(r.metric_value||0);
-      if(!x.img && r.artwork_url) x.img=r.artwork_url;
-      map.set(r.artist_name,x);
-    }
-    return [...map.values()].sort((a,b)=>b.total-a.total).slice(0,5);
-  },[globalRows]);
 
   const metricTitle = period==="daily" ? "Daily streams" : period==="7d" ? "7-day streams" : "30-day streams";
   const lastDate = rows[0]?.latest_at ? new Date(rows[0].latest_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—";
@@ -198,12 +217,20 @@ export default function Home(){
             </div>
 
             <div className="panel">
-              <h3>Artists in Global Top</h3>
-              {artists.map((a,i)=>(
-                <div className="artist-row" key={a.name}>
-                  <b>{i+1}</b>
-                  <div className="artist-img">{a.img && <img src={a.img} alt="" />}</div>
-                  <div><strong>{a.name}</strong><span>{fmt(a.total)} streams from tracks currently shown</span></div>
+              <h3>Top Artists</h3>
+              <p className="artist-caption">{category==="global" ? "Across all monitored tracks" : "Within the selected category"} · {period==="daily" ? "Daily" : period==="7d" ? "7 Days" : "30 Days"}</p>
+              {artists.map((a)=>(
+                <div className="artist-row" key={a.artist_name}>
+                  <b>{a.rank}</b>
+                  <div className="artist-img">{a.artwork_url && <img src={a.artwork_url} alt="" />}</div>
+                  <div>
+                    {a.spotify_artist_id ? (
+                      <a className="artist-name" href={"https://open.spotify.com/artist/"+a.spotify_artist_id} target="_blank" rel="noopener noreferrer">{a.artist_name}</a>
+                    ) : (
+                      <strong>{a.artist_name}</strong>
+                    )}
+                    <span>{fmt(a.metric_value)} streams · {a.monitored_tracks} monitored tracks</span>
+                  </div>
                 </div>
               ))}
             </div>
