@@ -1,65 +1,214 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useMemo, useState } from "react";
+
+const SUPABASE_URL = "https://lqgetuphktyczzjcdgep.supabase.co";
+const SUPABASE_KEY = "sb_publishable_kTloHtBbreb2TC12XVMMkw_B_wyeyIa";
+
+const CHARTS = [
+  ["global","Global Top"],
+  ["sleep","Sleep"],
+  ["binaural","Binaural"],
+  ["focus","Focus"],
+  ["meditation","Meditation"],
+  ["relaxation","Relaxation"],
+  ["noise","Noise"],
+  ["nature","Nature"],
+  ["frequencies","Frequencies"],
+] as const;
+
+const PERIODS = [
+  ["daily","Daily"],
+  ["7d","7 Days"],
+  ["30d","30 Days"],
+] as const;
+
+type Row = {
+  rank:number;
+  title:string;
+  artist_name:string;
+  spotify_track_id:string;
+  artwork_url:string | null;
+  categories:string[];
+  metric_value:number;
+  latest_count:number;
+  latest_at:string;
+};
+
+async function getChart(category:string, period:string, limit=28):Promise<Row[]> {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/get_pilot_chart", {
+    method:"POST",
+    headers:{
+      apikey:SUPABASE_KEY,
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+      p_category:category,
+      p_period:period,
+      p_limit:limit
+    }),
+    cache:"no-store"
+  });
+  if (!res.ok) throw new Error("Unable to load chart");
+  return res.json();
+}
+
+function fmt(n:number){ return new Intl.NumberFormat("en-US").format(Number(n||0)); }
+
+export default function Home(){
+  const [category,setCategory] = useState("global");
+  const [period,setPeriod] = useState("daily");
+  const [rows,setRows] = useState<Row[]>([]);
+  const [globalRows,setGlobalRows] = useState<Row[]>([]);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState("");
+
+  useEffect(()=>{
+    let active=true;
+    async function run(){
+      setLoading(true); setError("");
+      try{
+        const current = await getChart(category,period,28);
+        const global = category==="global" ? current : await getChart("global",period,28);
+        if(!active) return;
+        setRows(current); setGlobalRows(global);
+      }catch(e){
+        if(!active) return;
+        setError(e instanceof Error ? e.message : "Unable to load chart");
+      }finally{
+        if(active) setLoading(false);
+      }
+    }
+    run();
+    return ()=>{active=false};
+  },[category,period]);
+
+  const artists = useMemo(()=>{
+    const map = new Map<string,{name:string,total:number,img:string|null}>();
+    for(const r of globalRows){
+      const x = map.get(r.artist_name) || {name:r.artist_name,total:0,img:r.artwork_url};
+      x.total += Number(r.metric_value||0);
+      if(!x.img && r.artwork_url) x.img=r.artwork_url;
+      map.set(r.artist_name,x);
+    }
+    return [...map.values()].sort((a,b)=>b.total-a.total).slice(0,5);
+  },[globalRows]);
+
+  const metricTitle = period==="daily" ? "Daily streams" : period==="7d" ? "7-day streams" : "30-day streams";
+  const lastDate = rows[0]?.latest_at ? new Date(rows[0].latest_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <div className="topbar">
+        <div className="wrap topbar-inner">
+          <span>Private edition</span>
+          <span>7-day pilot · live tracked Spotify data</span>
+          <span>Future: Binaural News / Charts</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+
+      <header>
+        <div className="wrap">
+          <div className="mast">
+            <div className="brand">
+              <div className="logo">◐</div>
+              <div>
+                <div className="brand-name">SOUND &amp; MIND CHARTS</div>
+                <div className="brand-sub">The charts for sleep, focus, relaxation and sound.</div>
+              </div>
+            </div>
+          </div>
+          <nav className="nav">
+            <span className="active">Charts</span><span>Research</span><span>Sleep</span><span>Focus</span>
+            <span>Relaxation</span><span>Binaural</span><span>Noise</span><span>Nature</span>
+          </nav>
         </div>
-      </main>
-    </div>
+      </header>
+
+      <div className="page">
+        <div className="wrap layout">
+          <main>
+            <section className="hero">
+              <div>
+                <div className="kicker">Private chart pilot</div>
+                <h1>Music for a brighter you</h1>
+                <p className="lead">A live ranking of the most-streamed sounds currently monitored across sleep, focus, relaxation, binaural, noise, nature and frequency-based audio.</p>
+              </div>
+              <div className="meta">
+                <strong>331+ measured tracks</strong><br/>
+                30-day historical baseline<br/>
+                <span>{error ? "Feed unavailable" : "Live feed connected"}</span><br/>
+                Last data: <strong>{lastDate}</strong>
+              </div>
+            </section>
+
+            <div className="tabs">
+              {CHARTS.map(([slug,label])=>(
+                <button key={slug} className={"tab "+(category===slug?"active":"")} onClick={()=>setCategory(slug)}>{label}</button>
+              ))}
+            </div>
+
+            <div className="filters">
+              <div className="periods">
+                {PERIODS.map(([slug,label])=>(
+                  <button key={slug} className={"period "+(period===slug?"active":"")} onClick={()=>setPeriod(slug)}>{label}</button>
+                ))}
+              </div>
+              <div className="platform">● Spotify · tracked data</div>
+            </div>
+
+            <div className="tablebox">
+              <table>
+                <thead>
+                  <tr><th>#</th><th>Track / Artist</th><th>Category</th><th>{metricTitle}</th></tr>
+                </thead>
+                <tbody>
+                  {loading && <tr><td colSpan={4} className="loading">Loading chart…</td></tr>}
+                  {!loading && error && <tr><td colSpan={4} className="loading">{error}</td></tr>}
+                  {!loading && !error && rows.map(r=>(
+                    <tr key={r.spotify_track_id}>
+                      <td className="rank">{r.rank}</td>
+                      <td>
+                        <div className="track">
+                          <div className="cover">{r.artwork_url && <img src={r.artwork_url} alt="" />}</div>
+                          <div><strong>{r.title}</strong><span>{r.artist_name}</span></div>
+                        </div>
+                      </td>
+                      <td><span className="pill">{(r.categories||[]).join(" · ")}</span></td>
+                      <td className="metric">{fmt(r.metric_value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="note"><span className="chip">Private pilot</span> Rankings use real Soundcharts Spotify stream history. The monitored universe is being expanded during this seven-day test. Obvious identifier jumps and exact duplicate recordings are filtered before ranking.</p>
+          </main>
+
+          <aside className="side">
+            <div className="banner">
+              <h2>Better sound.<br/>A brighter tomorrow.</h2>
+              <p>Music · Science · People · Planet</p>
+            </div>
+
+            <div className="panel">
+              <h3>Top Artists</h3>
+              {artists.map((a,i)=>(
+                <div className="artist-row" key={a.name}>
+                  <b>{i+1}</b>
+                  <div className="artist-img">{a.img && <img src={a.img} alt="" />}</div>
+                  <div><strong>{a.name}</strong><span>{fmt(a.total)} tracked streams</span></div>
+                </div>
+              ))}
+            </div>
+
+            <div className="panel">
+              <h3>Method</h3>
+              <p className="method">Search broadly → measure candidates → quality-check obvious mismatches/anomalies → rank strictly by Spotify streams. No category quotas decide Global Top.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </>
   );
 }
