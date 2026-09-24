@@ -35,13 +35,20 @@ type Row = {
   latest_at:string;
 };
 
-type ArtistRow = {
-  rank:number;
+type ArtistIntel = {
+  reach_rank:number;
   artist_name:string;
   spotify_artist_id:string | null;
-  artwork_url:string | null;
-  metric_value:number;
-  monitored_tracks:number;
+  image_url:string | null;
+  monthly_listeners:number | null;
+  monthly_listeners_as_of:string | null;
+  main_catalog_count:number | null;
+  measured_catalog_tracks:number;
+  catalog_coverage_pct:number | null;
+  measured_streams_1d:number;
+  measured_streams_7d:number;
+  measured_streams_30d:number;
+  status:string;
 };
 
 async function getChart(category:string, period:string, limit=28):Promise<Row[]> {
@@ -62,21 +69,17 @@ async function getChart(category:string, period:string, limit=28):Promise<Row[]>
   return res.json();
 }
 
-async function getArtists(category:string, period:string, limit=15):Promise<ArtistRow[]> {
-  const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/get_pilot_artists", {
+async function getArtistIntel(limit=20):Promise<ArtistIntel[]> {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/get_artist_intelligence", {
     method:"POST",
     headers:{
       apikey:SUPABASE_KEY,
       "Content-Type":"application/json"
     },
-    body:JSON.stringify({
-      p_category:category,
-      p_period:period,
-      p_limit:limit
-    }),
+    body:JSON.stringify({ p_limit:limit }),
     cache:"no-store"
   });
-  if (!res.ok) throw new Error("Unable to load artists");
+  if (!res.ok) throw new Error("Unable to load artist intelligence");
   return res.json();
 }
 
@@ -86,7 +89,7 @@ export default function Home(){
   const [category,setCategory] = useState("global");
   const [period,setPeriod] = useState("daily");
   const [rows,setRows] = useState<Row[]>([]);
-  const [artists,setArtists] = useState<ArtistRow[]>([]);
+  const [artistIntel,setArtistIntel] = useState<ArtistIntel[]>([]);
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
 
@@ -95,13 +98,13 @@ export default function Home(){
     async function run(){
       setLoading(true); setError("");
       try{
-        const [current,currentArtists] = await Promise.all([
+        const [current,intel] = await Promise.all([
           getChart(category,period,28),
-          getArtists(category,period,20)
+          getArtistIntel(20)
         ]);
         if(!active) return;
         setRows(current);
-        setArtists(currentArtists);
+        setArtistIntel(intel);
       }catch(e){
         if(!active) return;
         setError(e instanceof Error ? e.message : "Unable to load chart");
@@ -208,6 +211,49 @@ export default function Home(){
             </div>
 
             <p className="note"><span className="chip">Private pilot</span> Rankings use real Soundcharts Spotify stream history. The monitored universe is being expanded during this seven-day test. Obvious identifier jumps and exact duplicate recordings are filtered before ranking.</p>
+
+            <section className="artist-intel">
+              <div className="artist-intel-head">
+                <div>
+                  <div className="kicker">Artist intelligence</div>
+                  <h2>Reach + catalog coverage</h2>
+                  <p>Whole-profile Spotify reach beside the part of each catalog currently represented in our stream measurement.</p>
+                </div>
+              </div>
+              <div className="tablebox intel-tablebox">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th><th>Artist</th><th>Monthly listeners</th><th>Main catalog</th><th>Measured</th><th>Coverage</th><th>Measured streams/day</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {artistIntel.slice(0,20).map(a=>(
+                      <tr key={a.artist_name}>
+                        <td className="intel-rank">{a.monthly_listeners!=null ? a.reach_rank : "—"}</td>
+                        <td>
+                          <div className="artist-cell">
+                            <div className="artist-img">{a.image_url && <img src={a.image_url} alt="" />}</div>
+                            <div>
+                              {a.spotify_artist_id ? (
+                                <a className="artist-name intel-name" href={"https://open.spotify.com/artist/"+a.spotify_artist_id} target="_blank" rel="noopener noreferrer">{a.artist_name}</a>
+                              ) : <strong>{a.artist_name}</strong>}
+                              <span className={"status "+(a.status==="synced"?"ok":"partial")}>{a.status==="synced"?"catalog synced":a.status==="catalog_partial"?"catalog sampled":"awaiting catalog sync"}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="metric">{a.monthly_listeners!=null ? fmt(a.monthly_listeners) : "Not synced"}</td>
+                        <td>{a.main_catalog_count!=null ? fmt(a.main_catalog_count) : "—"}</td>
+                        <td>{fmt(a.measured_catalog_tracks || 0)}</td>
+                        <td>{a.catalog_coverage_pct!=null ? Number(a.catalog_coverage_pct).toFixed(1)+"%" : "—"}</td>
+                        <td className="metric">{fmt(a.measured_streams_1d || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="note">Monthly listeners are a whole-artist reach metric. Measured catalog streams are deliberately shown with coverage so a 189-track catalog is not compared as if only 28 tracks existed.</p>
+            </section>
           </main>
 
           <aside className="side">
@@ -217,19 +263,19 @@ export default function Home(){
             </div>
 
             <div className="panel">
-              <h3>Tracked Artist Leaders</h3>
-              <p className="artist-caption">{category==="global" ? "Partial catalog across the monitored universe" : "Partial catalog within the selected category"} · {period==="daily" ? "Daily" : period==="7d" ? "7 Days" : "30 Days"}</p>
-              {artists.map((a)=>(
+              <h3>Artist Reach</h3>
+              <p className="artist-caption">Spotify monthly listeners · whole artist profile</p>
+              {artistIntel.filter(a=>a.monthly_listeners!=null).slice(0,10).map((a)=>(
                 <div className="artist-row" key={a.artist_name}>
-                  <b>{a.rank}</b>
-                  <div className="artist-img">{a.artwork_url && <img src={a.artwork_url} alt="" />}</div>
+                  <b>{a.reach_rank}</b>
+                  <div className="artist-img">{a.image_url && <img src={a.image_url} alt="" />}</div>
                   <div>
                     {a.spotify_artist_id ? (
                       <a className="artist-name" href={"https://open.spotify.com/artist/"+a.spotify_artist_id} target="_blank" rel="noopener noreferrer">{a.artist_name}</a>
                     ) : (
                       <strong>{a.artist_name}</strong>
                     )}
-                    <span>{fmt(a.metric_value)} streams from {a.monitored_tracks} monitored tracks · provisional</span>
+                    <span>{fmt(a.monthly_listeners || 0)} monthly listeners</span>
                   </div>
                 </div>
               ))}
@@ -237,7 +283,7 @@ export default function Home(){
 
             <div className="panel">
               <h3>Method</h3>
-              <p className="method">Track charts rank the measured universe strictly by Spotify streams. Artist leaders are provisional because some artists have hundreds of releases while only part of each catalog is currently measured. We do not treat this as a full-catalog artist ranking yet.</p>
+              <p className="method">Track charts rank the measured universe by Spotify stream history. Artist Reach uses Spotify monthly listeners for the whole artist profile. Catalog Performance remains coverage-aware: we show exactly how much of each known catalog is currently represented in our measured stream universe.</p>
             </div>
           </aside>
         </div>
