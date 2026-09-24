@@ -160,22 +160,28 @@ export default function Home(){
             <div className="tablebox">
               <table>
                 <thead>
-                  <tr><th>#</th><th>Track / Artist</th><th>Category</th><th>{metricTitle}</th></tr>
+                  <tr><th>#</th><th>Track / Artist</th><th>Category</th><th>{metricTitle}</th><th>Listen</th></tr>
                 </thead>
                 <tbody>
-                  {loading && <tr><td colSpan={4} className="loading">Loading chart…</td></tr>}
-                  {!loading && error && <tr><td colSpan={4} className="loading">{error}</td></tr>}
+                  {loading && <tr><td colSpan={5} className="loading">Loading chart…</td></tr>}
+                  {!loading && error && <tr><td colSpan={5} className="loading">{error}</td></tr>}
                   {!loading && !error && rows.map(r=>(
                     <tr key={r.spotify_track_id}>
                       <td className="rank">{r.rank}</td>
                       <td>
                         <div className="track">
-                          <div className="cover">{r.artwork_url && <img src={r.artwork_url} alt="" />}</div>
-                          <div><strong>{r.title}</strong><span>{r.artist_name}</span></div>
+                          <a className="cover" href={"https://open.spotify.com/track/"+r.spotify_track_id} target="_blank" rel="noopener noreferrer">
+                            {r.artwork_url && <img src={r.artwork_url} alt="" />}
+                          </a>
+                          <div>
+                            <a className="track-title" href={"https://open.spotify.com/track/"+r.spotify_track_id} target="_blank" rel="noopener noreferrer">{r.title}</a>
+                            <span>{r.artist_name}</span>
+                          </div>
                         </div>
                       </td>
                       <td><span className="pill">{(r.categories||[]).join(" · ")}</span></td>
                       <td className="metric">{fmt(r.metric_value)}</td>
+                      <td><a className="spotify-btn" href={"https://open.spotify.com/track/"+r.spotify_track_id} target="_blank" rel="noopener noreferrer">Spotify ↗</a></td>
                     </tr>
                   ))}
                 </tbody>
@@ -192,12 +198,12 @@ export default function Home(){
             </div>
 
             <div className="panel">
-              <h3>Top Artists</h3>
+              <h3>Artists in Global Top</h3>
               {artists.map((a,i)=>(
                 <div className="artist-row" key={a.name}>
                   <b>{i+1}</b>
                   <div className="artist-img">{a.img && <img src={a.img} alt="" />}</div>
-                  <div><strong>{a.name}</strong><span>{fmt(a.total)} tracked streams</span></div>
+                  <div><strong>{a.name}</strong><span>{fmt(a.total)} streams from tracks currently shown</span></div>
                 </div>
               ))}
             </div>
