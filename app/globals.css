@@ -88,3 +88,16 @@ tbody tr:hover{background:#f6f3eb}
   .brand-name{font-size:23px}.logo{width:46px;height:46px}.hero{display:block}.meta{text-align:left;margin-top:12px}
   h1{font-size:39px}.filters{display:block}.platform{display:inline-block;margin-top:10px}.tablebox{overflow:auto}table{min-width:980px}
 }
+
+.artist-intel{margin-top:34px}
+.artist-intel-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:12px}
+.artist-intel h2{font:600 31px/1 Georgia,serif;margin:5px 0 7px}
+.artist-intel-head p{margin:0;color:var(--muted);font-size:12px;line-height:1.45;max-width:700px}
+.intel-tablebox{overflow:auto}
+.intel-tablebox table{min-width:980px}
+.intel-rank{font:700 22px Georgia,serif;width:42px}
+.artist-cell{display:flex;align-items:center;gap:10px;min-width:210px}
+.intel-name{font-size:14px}
+.status{display:inline-block;margin-top:4px;font-size:8px;text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;border-radius:8px}
+.status.ok{background:#dfeee5;color:#1f6b48}
+.status.partial{background:#f3e8d8;color:#9b6435}
