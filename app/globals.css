@@ -61,10 +61,10 @@ tbody tr:hover{background:#f6f3eb}
 .track{display:flex;align-items:center;gap:12px;min-width:330px}
 .cover{width:54px;height:54px;background:#dfe9e6;overflow:hidden;flex:0 0 auto}
 .cover img{width:100%;height:100%;object-fit:cover}
-.track strong{display:block;font:500 15px Georgia,serif}
+.track strong{display:block;font:500 15px Georgia,serif}\n.track-title{display:block;font:500 15px Georgia,serif;color:var(--ink);text-decoration:none}.track-title:hover{text-decoration:underline}
 .track span{display:block;color:var(--muted);font-size:11px;margin-top:3px}
 .pill{display:inline-block;background:var(--soft);padding:5px 9px;border-radius:10px;font-size:9px;text-transform:capitalize}
-.metric{font-weight:800}
+.metric{font-weight:800}\n.spotify-btn{display:inline-block;background:#1ed760;color:#07382d;text-decoration:none;font-size:10px;font-weight:800;padding:8px 10px;border-radius:14px;white-space:nowrap}.spotify-btn:hover{filter:brightness(.96)}
 .loading{padding:28px}
 
 .side{display:flex;flex-direction:column;gap:14px}
@@ -86,5 +86,5 @@ tbody tr:hover{background:#f6f3eb}
 @media(max-width:760px){
   .topbar-inner span:nth-child(2){display:none}
   .brand-name{font-size:23px}.logo{width:46px;height:46px}.hero{display:block}.meta{text-align:left;margin-top:12px}
-  h1{font-size:39px}.filters{display:block}.platform{display:inline-block;margin-top:10px}.tablebox{overflow:auto}table{min-width:900px}
+  h1{font-size:39px}.filters{display:block}.platform{display:inline-block;margin-top:10px}.tablebox{overflow:auto}table{min-width:980px}
 }
