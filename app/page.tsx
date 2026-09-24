@@ -85,6 +85,12 @@ async function getArtistIntel(limit=20):Promise<ArtistIntel[]> {
 
 function fmt(n:number){ return new Intl.NumberFormat("en-US").format(Number(n||0)); }
 
+function artistStreams(a:ArtistIntel, period:string){
+  if(period==="7d") return Number(a.measured_streams_7d||0);
+  if(period==="30d") return Number(a.measured_streams_30d||0);
+  return Number(a.measured_streams_1d||0);
+}
+
 export default function Home(){
   const [category,setCategory] = useState("global");
   const [period,setPeriod] = useState("daily");
@@ -117,6 +123,7 @@ export default function Home(){
   },[category,period]);
 
   const metricTitle = period==="daily" ? "Daily streams" : period==="7d" ? "7-day streams" : "30-day streams";
+  const artistStreamLeaders = [...artistIntel].sort((a,b)=>artistStreams(b,period)-artistStreams(a,period));
   const lastDate = rows[0]?.latest_at ? new Date(rows[0].latest_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 
   return (
@@ -228,9 +235,9 @@ export default function Home(){
                     </tr>
                   </thead>
                   <tbody>
-                    {artistIntel.slice(0,20).map(a=>(
+                    {artistStreamLeaders.slice(0,20).map((a,index)=>(
                       <tr key={a.artist_name}>
-                        <td className="intel-rank">{a.monthly_listeners!=null ? a.reach_rank : "—"}</td>
+                        <td className="intel-rank">{index+1}</td>
                         <td>
                           <div className="artist-cell">
                             <div className="artist-img">{a.image_url && <img src={a.image_url} alt="" />}</div>
@@ -246,13 +253,13 @@ export default function Home(){
                         <td>{a.main_catalog_count!=null ? fmt(a.main_catalog_count) : "—"}</td>
                         <td>{fmt(a.measured_catalog_tracks || 0)}</td>
                         <td>{a.catalog_coverage_pct!=null ? Number(a.catalog_coverage_pct).toFixed(1)+"%" : "—"}</td>
-                        <td className="metric">{fmt(a.measured_streams_1d || 0)}</td>
+                        <td className="metric">{fmt(artistStreams(a,period))}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="note">Monthly listeners are a whole-artist reach metric. Measured catalog streams are deliberately shown with coverage so a 189-track catalog is not compared as if only 28 tracks existed.</p>
+              <p className="note">Artists are ranked here by measured Spotify streams for the selected period. Monthly listeners stay visible as context only. Catalog coverage is shown because stream totals remain incomplete until more of each artist's catalog is measured.</p>
             </section>
           </main>
 
@@ -263,11 +270,11 @@ export default function Home(){
             </div>
 
             <div className="panel">
-              <h3>Artist Reach</h3>
-              <p className="artist-caption">Spotify monthly listeners · whole artist profile</p>
-              {artistIntel.filter(a=>a.monthly_listeners!=null).slice(0,10).map((a)=>(
+              <h3>Top Artists · Streams</h3>
+              <p className="artist-caption">{period==="daily" ? "Measured Spotify streams · Daily" : period==="7d" ? "Measured Spotify streams · 7 Days" : "Measured Spotify streams · 30 Days"}</p>
+              {artistStreamLeaders.slice(0,10).map((a,index)=>(
                 <div className="artist-row" key={a.artist_name}>
-                  <b>{a.reach_rank}</b>
+                  <b>{index+1}</b>
                   <div className="artist-img">{a.image_url && <img src={a.image_url} alt="" />}</div>
                   <div>
                     {a.spotify_artist_id ? (
@@ -275,7 +282,7 @@ export default function Home(){
                     ) : (
                       <strong>{a.artist_name}</strong>
                     )}
-                    <span>{fmt(a.monthly_listeners || 0)} monthly listeners</span>
+                    <span>{fmt(artistStreams(a,period))} streams · {a.catalog_coverage_pct!=null ? Number(a.catalog_coverage_pct).toFixed(1)+"% coverage" : "coverage pending"}</span>
                   </div>
                 </div>
               ))}
@@ -283,7 +290,7 @@ export default function Home(){
 
             <div className="panel">
               <h3>Method</h3>
-              <p className="method">Track charts rank the measured universe by Spotify stream history. Artist Reach uses Spotify monthly listeners for the whole artist profile. Catalog Performance remains coverage-aware: we show exactly how much of each known catalog is currently represented in our measured stream universe.</p>
+              <p className="method">Both track charts and the artist ranking are ordered by Spotify streams for the selected period. Monthly listeners are shown only as supporting context. Artist totals are coverage-aware because we have not yet measured every track in every catalog.</p>
             </div>
           </aside>
         </div>
